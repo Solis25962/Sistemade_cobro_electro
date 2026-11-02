@@ -20,7 +20,7 @@ services:
       - key: DB_PASSWORD
         sync: false
       - key: DB_NAME
-        value: sistema_cobro_electro
+        sync: false
       - key: DB_SSL
         value: true
       - key: DB_SSL_REJECT_UNAUTHORIZED
