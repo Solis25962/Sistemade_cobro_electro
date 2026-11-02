@@ -1,16 +1,46 @@
 # Sistema de Cobro de Electrodomésticos
 
-Aplicación para administrar ventas a crédito de electrodomésticos casa a casa, reemplazando el cuaderno físico por un sistema digital con control de clientes, productos, inventario, ventas, abonos y recibos por WhatsApp.
+Aplicación web para administrar ventas a crédito de electrodomésticos casa a casa. Reemplaza el cuaderno físico por un sistema digital con control de clientes, productos, inventario, ventas, abonos y recibos por WhatsApp.
 
-> Estado actual: **backend y frontend funcionales y preparados para despliegue**. Incluye autenticación con roles, paginación, edición/eliminación, movimientos de stock, gestión de usuarios, panel del dueño y recibos por WhatsApp.
+## Aplicación en producción
 
-## Stack
+| Componente | URL |
+| --- | --- |
+| Frontend | https://sistema-cobro-electro.vercel.app |
+| Backend / API | https://cobro-electro-api.onrender.com |
+| Health check | https://cobro-electro-api.onrender.com/api/health |
+| Repositorio | https://github.com/Solis25962/Sistemade_cobro_electro |
 
+> El frontend está en Vercel, la API en Render y la base de datos MySQL en Aiven.
+>
+> Los planes gratuitos de Render y Aiven pueden suspender los servicios por inactividad. El primer acceso del día puede tardar hasta un minuto mientras despiertan.
+
+## Stack tecnológico
+
+- **Frontend:** React 19, Vite 8, React Router 7 y CSS responsive.
 - **Backend:** Node.js, Express 5, MySQL (`mysql2`), JWT (`jsonwebtoken`), `bcryptjs`.
-- **Base de datos:** MySQL 8+.
-- **Frontend:** React 19, Vite, React Router y CSS responsive.
+- **Base de datos:** MySQL 8+ (local o administrada en Aiven).
 - **Módulos:** ESM (`"type": "module"`).
-- **Despliegue sugerido:** backend en Render/Railway con Docker, frontend en Vercel y MySQL administrado.
+- **Despliegue:** Vercel (frontend), Render (backend con Docker), Aiven (MySQL).
+
+## Arquitectura en producción
+
+```text
+Navegador (vendedor / dueño)
+        │
+        ▼
+Frontend React  ──►  Vercel
+        │  HTTPS (VITE_API_URL)
+        ▼
+API Express 5  ──►  Render (Docker, plan free)
+        │  MySQL + SSL
+        ▼
+MySQL 8  ──►  Aiven (plan free, base "defaultdb")
+```
+
+- El frontend llama a la API usando `VITE_API_URL`.
+- La API valida CORS contra `FRONTEND_URL`.
+- La API se conecta a MySQL con SSL (`DB_SSL=true`).
 
 ## Estructura del proyecto
 
@@ -42,32 +72,60 @@ Sistemade_Cobro_Electro/
 │   │   ├── utils/                  # Formatos de moneda, fechas y estados
 │   │   ├── App.jsx
 │   │   └── styles.css
-│   ├── vercel.json
+│   ├── vercel.json                 # Rewrites para React Router
 │   ├── .env.example
 │   ├── .env.production.example
 │   └── package.json
-├── render.yaml                     # Blueprint opcional para Render
+├── render.yaml                     # Blueprint de Render
 ├── context.md                      # Contexto y requerimientos del proyecto
 └── README.md
 ```
 
-## Puesta en marcha local
+## Requisitos
 
-### 1. Requisitos
+- **Node.js 20.19+** (recomendado 22 o superior).
+- **npm** 10+.
+- **MySQL 8+** si vas a ejecutar todo en tu equipo.
+- Git.
 
-- Node.js 20.19+ (recomendado 22)
-- MySQL 8+ en ejecución
+Verifica las versiones:
 
-### 2. Backend: instalar dependencias
+```bash
+node --version
+npm --version
+```
+
+---
+
+## Cómo correr el sistema
+
+Tienes dos formas de trabajar:
+
+- **Opción A:** todo local (MySQL instalado en tu equipo).
+- **Opción B:** backend local conectado a la MySQL en la nube (Aiven).
+
+### Opción A — Todo local con MySQL
+
+#### 1. Clonar el repositorio
+
+```bash
+git clone https://github.com/Solis25962/Sistemade_cobro_electro.git
+cd Sistemade_cobro_electro
+```
+
+#### 2. Instalar dependencias
 
 ```bash
 cd backend
 npm install
+
+cd ../frontend
+npm install
 ```
 
-### 3. Backend: configurar variables de entorno
+#### 3. Configurar el backend
 
-Copia `backend/.env.example` a `backend/.env` y ajusta las credenciales:
+Copia `backend/.env.example` a `backend/.env` y ajusta tus credenciales de MySQL local:
 
 ```env
 PORT=5000
@@ -79,52 +137,121 @@ DB_PORT=3306
 DB_SSL=false
 DB_SSL_REJECT_UNAUTHORIZED=true
 DB_SKIP_CREATE_DATABASE=false
-JWT_SECRET=cambia_esta_clave
+JWT_SECRET=cambia_esta_clave_por_una_larga_y_aleatoria
 JWT_EXPIRES_IN=8h
 FRONTEND_URL=http://localhost:5173
 NODE_ENV=development
 ```
 
-### 4. Backend: inicializar la base de datos
+En PowerShell:
+
+```powershell
+Copy-Item backend\.env.example backend\.env
+```
+
+#### 4. Inicializar la base de datos
 
 Con MySQL encendido:
 
 ```bash
+cd backend
 npm run db:init
 ```
 
-Esto crea la base `sistema_cobro_electro`, las tablas, la tabla de movimientos de stock y datos de ejemplo.
+Esto crea la base `sistema_cobro_electro`, las tablas, la tabla de movimientos de stock y los datos de ejemplo.
 
-### 5. Backend: levantar la API
+#### 5. Levantar el backend
 
 ```bash
+cd backend
 npm run dev
 ```
 
-La API queda disponible en `http://localhost:5000`. Verifica con:
+La API queda disponible en `http://localhost:5000`. Verifica:
 
 ```bash
-GET http://localhost:5000/api/health
+curl http://localhost:5000/api/health
 ```
 
-### 6. Frontend: instalar dependencias
+Respuesta esperada:
+
+```json
+{
+  "success": true,
+  "message": "API del sistema de cobro funcionando",
+  "database": "ok"
+}
+```
+
+#### 6. Levantar el frontend
 
 En otra terminal:
 
 ```bash
 cd frontend
-npm install
-```
-
-En desarrollo se usa el proxy de Vite (`/api` → `http://localhost:5000`), por lo que no necesitas crear `.env`.
-
-### 7. Frontend: levantar la aplicación
-
-```bash
 npm run dev
 ```
 
-La aplicación queda disponible en `http://localhost:5173`.
+Abre `http://localhost:5173`. En desarrollo, Vite hace proxy de `/api` hacia `http://localhost:5000`, por lo que no necesitas configurar `VITE_API_URL`.
+
+### Opción B — Backend local con la MySQL en la nube
+
+Útil para probar con los datos reales sin instalar MySQL.
+
+1. En `backend/.env` usa las credenciales del proveedor (Aiven):
+
+```env
+DB_HOST=tu-host.aivencloud.com
+DB_PORT=tu-puerto
+DB_USER=avnadmin
+DB_PASSWORD=tu-password
+DB_NAME=defaultdb
+DB_SSL=true
+DB_SSL_REJECT_UNAUTHORIZED=false
+DB_SKIP_CREATE_DATABASE=true
+FRONTEND_URL=http://localhost:5173
+NODE_ENV=development
+```
+
+2. No ejecutes `npm run db:init` sobre la base de producción, salvo que quieras recrear las tablas y los datos de ejemplo.
+
+3. Levanta backend y frontend igual que en la Opción A.
+
+> Si quieres que el frontend local consuma la API desplegada, crea `frontend/.env` con:
+>
+> ```env
+> VITE_API_URL=https://cobro-electro-api.onrender.com/api
+> ```
+
+---
+
+## Variables de entorno
+
+### Backend (`backend/.env`)
+
+| Variable | Descripción | Ejemplo |
+| --- | --- | --- |
+| `PORT` | Puerto de la API | `5000` |
+| `NODE_ENV` | Entorno de ejecución | `development` / `production` |
+| `DB_HOST` | Host de MySQL | `localhost` |
+| `DB_PORT` | Puerto de MySQL | `3306` |
+| `DB_USER` | Usuario de MySQL | `root` |
+| `DB_PASSWORD` | Contraseña de MySQL | `••••••` |
+| `DB_NAME` | Nombre de la base | `sistema_cobro_electro` / `defaultdb` |
+| `DB_SSL` | Activa SSL | `false` local / `true` Aiven |
+| `DB_SSL_REJECT_UNAUTHORIZED` | Valida el certificado SSL | `true` / `false` |
+| `DB_SKIP_CREATE_DATABASE` | Omite `CREATE DATABASE` en `db:init` | `false` local / `true` Aiven |
+| `JWT_SECRET` | Clave para firmar tokens | cadena larga y aleatoria |
+| `JWT_EXPIRES_IN` | Vigencia del token | `8h` |
+| `FRONTEND_URL` | Orígenes permitidos por CORS (separados por coma) | `http://localhost:5173,https://sistema-cobro-electro.vercel.app` |
+
+### Frontend (`frontend/.env`)
+
+| Variable | Descripción | Ejemplo |
+| --- | --- | --- |
+| `VITE_API_URL` | URL base de la API | `https://cobro-electro-api.onrender.com/api` |
+
+En desarrollo, si no existe `.env`, el cliente usa `/api` y el proxy de Vite.
 
 ## Usuarios de ejemplo
 
@@ -133,7 +260,7 @@ La aplicación queda disponible en `http://localhost:5173`.
 | Dueño | `admin@electro.com` | `admin123` |
 | Vendedor | `vendedor@electro.com` | `vendedor123` |
 
-> Cambia estas contraseñas antes de usar el sistema en producción.
+> **Importante:** cambia estas contraseñas desde la pantalla de Usuarios antes de usar el sistema en producción.
 
 ## Funcionalidades
 
@@ -156,7 +283,7 @@ Las rutas protegidas requieren el header `Authorization: Bearer <token>`.
 
 | Método | Ruta | Acceso | Descripción |
 | --- | --- | --- | --- |
-| GET | `/api/health` | Público | Estado de la API |
+| GET | `/api/health` | Público | Estado de la API y de la base de datos |
 | POST | `/api/auth/login` | Público | Inicio de sesión y token JWT |
 | GET | `/api/auth/profile` | Autenticado | Perfil del usuario actual |
 | GET | `/api/auth/usuarios` | Dueño | Listar usuarios con paginación y búsqueda |
@@ -243,7 +370,7 @@ La respuesta incluye:
 ### Ejemplo: iniciar sesión
 
 ```bash
-curl -X POST http://localhost:5000/api/auth/login \
+curl -X POST https://cobro-electro-api.onrender.com/api/auth/login \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"admin@electro.com\",\"password\":\"admin123\"}"
 ```
@@ -251,7 +378,7 @@ curl -X POST http://localhost:5000/api/auth/login \
 ### Ejemplo: registrar un abono
 
 ```bash
-curl -X POST http://localhost:5000/api/abonos \
+curl -X POST https://cobro-electro-api.onrender.com/api/abonos \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer TU_TOKEN" \
   -d "{\"venta_id\":1,\"monto\":1000,\"metodo_pago\":\"efectivo\"}"
@@ -261,62 +388,75 @@ La respuesta incluye `data.saldo_pendiente` y `whatsapp_url`.
 
 ## Despliegue
 
-### 1. Base de datos MySQL
+### 1. Base de datos MySQL (Aiven)
 
-Crea una base MySQL administrada (Railway, Aiven, Clever Cloud, PlanetScale u otro proveedor) y guarda:
+1. Crea una cuenta en https://aiven.io (no pide tarjeta).
+2. Crea un servicio **MySQL** con plan **Free**.
+3. Espera a que el servicio esté en estado **Running**.
+4. Copia los datos de conexión: host, puerto, usuario (`avnadmin`), contraseña y base (`defaultdb`).
+5. Inicializa el esquema una sola vez desde tu equipo:
 
-- Host y puerto.
-- Usuario y contraseña.
-- Nombre de la base: `sistema_cobro_electro`.
-- Si el proveedor exige SSL, activa `DB_SSL=true`.
-
-Inicializa el esquema una sola vez. Desde tu equipo, con las variables de producción:
+```env
+DB_HOST=tu-host.aivencloud.com
+DB_PORT=tu-puerto
+DB_USER=avnadmin
+DB_PASSWORD=tu-password
+DB_NAME=defaultdb
+DB_SSL=true
+DB_SSL_REJECT_UNAUTHORIZED=false
+DB_SKIP_CREATE_DATABASE=true
+```
 
 ```bash
 cd backend
 npm run db:init
 ```
 
-Si el proveedor ya creó la base y tu usuario no tiene permiso para crear bases, define:
+`DB_SKIP_CREATE_DATABASE=true` evita ejecutar `CREATE DATABASE` y se conecta directamente a `defaultdb`. El script solo crea tablas y datos de ejemplo.
 
-```env
-DB_SKIP_CREATE_DATABASE=true
-```
-
-Así el script se conecta directamente a la base existente y solo crea tablas y datos iniciales.
-
-### 2. Backend en Render o Railway
+### 2. Backend en Render
 
 El repositorio incluye `backend/Dockerfile` y `render.yaml`.
 
-En Render puedes usar el blueprint `render.yaml` o crear un **Web Service** con:
+**Opción blueprint:**
 
-- Runtime: Docker.
-- Dockerfile: `backend/Dockerfile`.
-- Contexto: `backend`.
-- Health check: `/api/health`.
+1. En Render: **New +** → **Blueprint**.
+2. Selecciona el repositorio `Solis25962/Sistemade_cobro_electro`.
+3. Render lee `render.yaml` y pide las variables marcadas con `sync: false`.
+4. Completa las variables y aplica el deploy.
 
-Variables de entorno mínimas:
+**Opción manual:**
+
+1. **New +** → **Web Service** → conecta el repositorio.
+2. Configura:
+   - Runtime: **Docker**.
+   - Root Directory: `backend`.
+   - Dockerfile Path: `Dockerfile`.
+   - Health Check Path: `/api/health`.
+   - Plan: **Free**.
+3. Agrega las variables de entorno (ver abajo) y despliega.
+
+Variables de entorno en Render:
 
 ```env
 NODE_ENV=production
 PORT=5000
 DB_HOST=...
-DB_PORT=3306
+DB_PORT=...
 DB_USER=...
 DB_PASSWORD=...
-DB_NAME=sistema_cobro_electro
+DB_NAME=defaultdb
 DB_SSL=true
-DB_SSL_REJECT_UNAUTHORIZED=true
+DB_SSL_REJECT_UNAUTHORIZED=false
 DB_SKIP_CREATE_DATABASE=true
 JWT_SECRET=una_clave_larga_y_aleatoria
 JWT_EXPIRES_IN=8h
-FRONTEND_URL=https://tu-frontend.vercel.app
+FRONTEND_URL=https://sistema-cobro-electro.vercel.app
 ```
 
-`FRONTEND_URL` acepta varios orígenes separados por coma. En producción CORS solo permite esos dominios. Escribe las URLs sin barra final.
+`FRONTEND_URL` acepta varios orígenes separados por coma. En producción, CORS solo permite esos dominios. Escríbelos sin barra final.
 
-Si el proveedor de MySQL usa certificados autofirmados, define `DB_SSL_REJECT_UNAUTHORIZED=false`.
+> El plan free de Render duerme el servicio tras un periodo de inactividad. La primera petición puede tardar ~50 segundos.
 
 ### 3. Frontend en Vercel
 
@@ -327,41 +467,57 @@ Si el proveedor de MySQL usa certificados autofirmados, define `DB_SSL_REJECT_UN
 5. Agrega la variable:
 
 ```env
-VITE_API_URL=https://tu-backend.onrender.com/api
+VITE_API_URL=https://cobro-electro-api.onrender.com/api
 ```
 
-`frontend/vercel.json` ya incluye la reescritura necesaria para que React Router funcione al recargar rutas como `/ventas/1`.
+6. Despliega.
+
+`frontend/vercel.json` incluye la reescritura necesaria para que React Router funcione al recargar rutas como `/ventas/1`.
 
 ### 4. Verificación posterior al despliegue
 
-- Abre `https://tu-backend/api/health`.
-- Inicia sesión con el usuario dueño.
-- Cambia la contraseña de los usuarios de ejemplo.
-- Registra un cliente, un producto, una venta y un abono de prueba.
-- Verifica el enlace de WhatsApp y el descuento de stock.
-
-### Notas de seguridad y operación
-
-- Cambia `JWT_SECRET` y las contraseñas de ejemplo antes de producción.
-- No subas `backend/.env` al repositorio.
-- Activa SSL de MySQL si el proveedor lo requiere.
-- Configura respaldos periódicos de la base de datos.
-- En planes gratuitos el backend puede tardar en despertar tras un periodo de inactividad.
+1. `https://cobro-electro-api.onrender.com/api/health` debe responder `"database": "ok"`.
+2. Abre el frontend e inicia sesión con el usuario dueño.
+3. Cambia las contraseñas de los usuarios de ejemplo.
+4. Registra un cliente, un producto, una venta y un abono de prueba.
+5. Verifica el enlace de WhatsApp y el descuento de stock.
 
 ## Scripts disponibles
 
 ### Backend
 
-- `npm run dev` — inicia la API con recarga automática.
-- `npm start` — inicia la API en modo normal.
-- `npm run db:init` — crea la base, tablas, movimientos de stock y datos de ejemplo.
+| Script | Descripción |
+| --- | --- |
+| `npm run dev` | Inicia la API con recarga automática (nodemon). |
+| `npm start` | Inicia la API en modo normal. |
+| `npm run db:init` | Crea la base, tablas, movimientos de stock y datos de ejemplo. |
 
 ### Frontend
 
-- `npm run dev` — inicia el servidor de desarrollo.
-- `npm run build` — genera la versión de producción.
-- `npm run preview` — previsualiza la versión compilada.
-- `npm run lint` — ejecuta el linter.
+| Script | Descripción |
+| --- | --- |
+| `npm run dev` | Inicia el servidor de desarrollo de Vite. |
+| `npm run build` | Genera la versión de producción en `dist`. |
+| `npm run preview` | Previsualiza la versión compilada. |
+| `npm run lint` | Ejecuta el linter (oxlint). |
+
+## Solución de problemas
+
+- **`getaddrinfo ENOTFOUND` al conectar MySQL:** el host no existe o el servicio aún no está listo. Revisa que diga **Running** y copia de nuevo el host.
+- **`database: error` en `/api/health`:** credenciales incorrectas, base inexistente o SSL mal configurado. En Aiven usa `DB_SSL=true` y `DB_SSL_REJECT_UNAUTHORIZED=false`.
+- **Error de CORS en el navegador:** agrega el dominio exacto del frontend en `FRONTEND_URL` (sin barra final) y redeploy del backend.
+- **Build de Render falla con "Dockerfile not found":** el contexto debe ser `backend` y el Dockerfile `backend/Dockerfile`.
+- **El frontend muestra 404 en la API:** verifica `VITE_API_URL` en Vercel y vuelve a desplegar (Vite inyecta la variable en tiempo de build).
+- **Render tarda en responder:** es normal en el plan free tras inactividad.
+
+## Seguridad y operación
+
+- Cambia `JWT_SECRET` y las contraseñas de ejemplo antes de producción.
+- No subas `backend/.env` ni `frontend/.env` al repositorio (ya están en `.gitignore`).
+- Activa SSL de MySQL si el proveedor lo requiere.
+- Configura respaldos periódicos de la base de datos.
+- Rotar la contraseña de MySQL y la API key de Render si se comparten por error.
+- En planes gratuitos, Render y Aiven pueden suspender servicios por inactividad.
 
 ## Próximos pasos
 
