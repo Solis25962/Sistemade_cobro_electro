@@ -1,3 +1,5 @@
+import { normalizePhone } from './phone.js';
+
 /**
  * Genera el enlace wa.me para enviar recibo de abono por WhatsApp
  * @param {Object} data
@@ -18,8 +20,8 @@ export const buildWhatsAppReceiptUrl = ({
   vendedorNombre,
   numeroRecibo = ''
 }) => {
-  // Limpiar caracteres no numéricos del teléfono
-  const cleanPhone = String(telefono).replace(/\D/g, '');
+  // Normaliza el teléfono al formato internacional (505 + 8 dígitos)
+  const cleanPhone = normalizePhone(telefono);
 
   const fecha = new Date().toLocaleDateString('es-NI', {
     day: '2-digit',

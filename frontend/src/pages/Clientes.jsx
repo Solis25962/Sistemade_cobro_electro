@@ -235,7 +235,7 @@ export default function Clientes() {
                 name="telefono"
                 value={form.telefono}
                 onChange={handleChange}
-                placeholder="Ej. 50588887777"
+                placeholder="Ej. 88887777 o 50588887777"
                 required
               />
             </label>

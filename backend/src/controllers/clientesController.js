@@ -1,6 +1,7 @@
 import pool from '../config/db.js';
 import { HttpError } from '../utils/httpError.js';
 import { buildPaginationMeta, getPagination } from '../utils/pagination.js';
+import { isValidPhone, normalizePhone } from '../utils/phone.js';
 
 export const getClientes = async (req, res, next) => {
   try {
@@ -34,10 +35,16 @@ export const getClientes = async (req, res, next) => {
 
 export const createCliente = async (req, res, next) => {
   try {
-    const { nombre, telefono, direccion, cedula, notas } = req.body;
+    const { nombre, direccion, cedula, notas } = req.body;
 
-    if (!nombre || !telefono) {
+    if (!nombre || !req.body.telefono) {
       throw new HttpError(400, 'El nombre y el teléfono son obligatorios');
+    }
+
+    const telefono = normalizePhone(req.body.telefono);
+
+    if (!isValidPhone(telefono)) {
+      throw new HttpError(400, 'El teléfono debe tener 8 dígitos (Ej. 88887777 o 50588887777)');
     }
 
     const [result] = await pool.query(
@@ -75,10 +82,14 @@ export const updateCliente = async (req, res, next) => {
     const actual = rows[0];
     const nombre = req.body.nombre !== undefined ? String(req.body.nombre).trim() : actual.nombre;
     const telefono =
-      req.body.telefono !== undefined ? String(req.body.telefono).trim() : actual.telefono;
+      req.body.telefono !== undefined ? normalizePhone(req.body.telefono) : actual.telefono;
 
     if (!nombre || !telefono) {
       throw new HttpError(400, 'El nombre y el teléfono son obligatorios');
+    }
+
+    if (!isValidPhone(telefono)) {
+      throw new HttpError(400, 'El teléfono debe tener 8 dígitos (Ej. 88887777 o 50588887777)');
     }
 
     const direccion =

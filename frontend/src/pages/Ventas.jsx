@@ -18,6 +18,11 @@ import {
 
 const buildEmptyForm = () => ({
   cliente_id: '',
+  nuevo_cliente: false,
+  cliente_nombre: '',
+  cliente_telefono: '',
+  cliente_direccion: '',
+  cliente_cedula: '',
   producto_id: '',
   precio_total: '',
   monto_cuota: '',
@@ -101,6 +106,20 @@ export default function Ventas() {
     setForm({ ...form, [event.target.name]: event.target.value });
   };
 
+  const handleNewClientToggle = (event) => {
+    const nuevoCliente = event.target.checked;
+
+    setForm({
+      ...form,
+      nuevo_cliente: nuevoCliente,
+      cliente_id: nuevoCliente ? '' : form.cliente_id,
+      cliente_nombre: nuevoCliente ? form.cliente_nombre : '',
+      cliente_telefono: nuevoCliente ? form.cliente_telefono : '',
+      cliente_direccion: nuevoCliente ? form.cliente_direccion : '',
+      cliente_cedula: nuevoCliente ? form.cliente_cedula : ''
+    });
+  };
+
   const handleProductChange = (event) => {
     const productoId = event.target.value;
     const producto = options.productos.find((item) => String(item.id) === productoId);
@@ -118,8 +137,20 @@ export default function Ventas() {
     setFormError('');
 
     try {
+      let clienteId = Number(form.cliente_id);
+
+      if (form.nuevo_cliente) {
+        const clienteRes = await api.post('/clientes', {
+          nombre: form.cliente_nombre.trim(),
+          telefono: form.cliente_telefono.trim(),
+          direccion: form.cliente_direccion.trim() || null,
+          cedula: form.cliente_cedula.trim() || null
+        });
+        clienteId = clienteRes.id;
+      }
+
       const payload = {
-        cliente_id: Number(form.cliente_id),
+        cliente_id: clienteId,
         producto_id: Number(form.producto_id),
         precio_total: Number(form.precio_total),
         monto_cuota: Number(form.monto_cuota),
@@ -147,10 +178,11 @@ export default function Ventas() {
   const precio = Number(form.precio_total);
   const cuotas = Number(form.total_cuotas);
   const sugerencia = precio > 0 && cuotas > 0 ? precio / cuotas : 0;
+  const clienteListo = form.nuevo_cliente || options.clientes.length > 0;
   const canSubmit =
     !loadingOptions &&
     !optionsError &&
-    options.clientes.length > 0 &&
+    clienteListo &&
     options.productos.length > 0;
 
   return (
@@ -288,31 +320,90 @@ export default function Ventas() {
 
           {loadingOptions && <p className="muted">Cargando clientes y productos...</p>}
 
-          {!loadingOptions && !optionsError && options.clientes.length === 0 && (
-            <Alert type="info">No hay clientes registrados. Primero registra un cliente.</Alert>
+          {!loadingOptions && !optionsError && options.clientes.length === 0 && !form.nuevo_cliente && (
+            <Alert type="info">
+              No hay clientes registrados. Activa "Cliente nuevo" para crearlo aquí mismo.
+            </Alert>
           )}
 
           {!loadingOptions && !optionsError && options.productos.length === 0 && (
             <Alert type="info">No hay productos con stock disponible.</Alert>
           )}
 
-          <label className="field">
-            <span>Cliente *</span>
-            <select
-              name="cliente_id"
-              value={form.cliente_id}
-              onChange={handleChange}
-              required
-              disabled={!options.clientes.length}
-            >
-              <option value="">Selecciona un cliente</option>
-              {options.clientes.map((cliente) => (
-                <option key={cliente.id} value={cliente.id}>
-                  {cliente.nombre} · {cliente.telefono}
-                </option>
-              ))}
-            </select>
+          <label className="checkbox-field">
+            <input
+              type="checkbox"
+              checked={form.nuevo_cliente}
+              onChange={handleNewClientToggle}
+            />
+            <span>Cliente nuevo (no está en la lista)</span>
           </label>
+
+          {form.nuevo_cliente ? (
+            <>
+              <label className="field">
+                <span>Nombre del cliente *</span>
+                <input
+                  name="cliente_nombre"
+                  value={form.cliente_nombre}
+                  onChange={handleChange}
+                  placeholder="Ej. Maynor Solís"
+                  autoFocus
+                  required
+                />
+              </label>
+
+              <div className="form-grid">
+                <label className="field">
+                  <span>Teléfono *</span>
+                  <input
+                    name="cliente_telefono"
+                    value={form.cliente_telefono}
+                    onChange={handleChange}
+                    placeholder="Ej. 50588887777"
+                    required
+                  />
+                </label>
+                <label className="field">
+                  <span>Cédula</span>
+                  <input
+                    name="cliente_cedula"
+                    value={form.cliente_cedula}
+                    onChange={handleChange}
+                    placeholder="Opcional"
+                  />
+                </label>
+              </div>
+
+              <label className="field">
+                <span>Dirección</span>
+                <input
+                  name="cliente_direccion"
+                  value={form.cliente_direccion}
+                  onChange={handleChange}
+                  placeholder="Barrio, ciudad, referencias"
+                />
+              </label>
+            </>
+          ) : (
+            <label className="field">
+              <span>Cliente *</span>
+              <select
+                name="cliente_id"
+                value={form.cliente_id}
+                onChange={handleChange}
+                required
+                disabled={!options.clientes.length}
+              >
+                <option value="">Selecciona un cliente</option>
+                {options.clientes.map((cliente) => (
+                  <option key={cliente.id} value={cliente.id}>
+                    {cliente.nombre} · {cliente.telefono}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
           <label className="field">
             <span>Producto *</span>
